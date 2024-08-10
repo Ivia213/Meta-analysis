@@ -1,0 +1,47 @@
+# 安装并加载包
+# 安装并加载包
+if (!requireNamespace("readxl", quietly = TRUE)) install.packages("readxl")
+if (!requireNamespace("metafor", quietly = TRUE)) install.packages("metafor")
+library(readxl)
+library(metafor)
+
+# 读取Excel数据
+data <- read.csv("D:/R/data/MC/Data summary.csv", encoding = "UTF-8", fileEncoding = "UTF-8-BOM")
+
+# 检查列名
+colnames(data)
+
+# 确保列名正确并转换数据类型
+data$Hedgesg_Effect_Size <- as.numeric(as.character(data$`Hedgesg.Effect.Size`))
+data$Hedgesg_Standard_Error <- as.numeric(as.character(data$`Hedgesg.Standard.Error`))
+
+# 检查数据
+str(data)
+
+# 创建固定效应模型
+rma_model <- try(rma(yi = Hedgesg_Effect_Size, 
+                      sei = Hedgesg_Standard_Error, 
+                      data = data, 
+                      method = "FE"), silent = TRUE)
+
+# 检查模型是否成功拟合
+if (inherits(rma_model, "try-error")) {
+  stop("Fixed effects model did not fit properly.")
+}
+
+# 设置图形边距
+par(mar = c(5, 4, 4, 2))
+
+# 绘制森林图，并添加列标题
+forest(rma_model,
+       xlab = "Effect Size",
+       mlab = "FE Model",
+       slab = paste(data$Author, data$Year),
+       cex = 0.75,
+       main = "Forest Plot for Metacognitive Effects of Computational Thinking")
+
+# 调整“Hedges's Effect Size and 95% CI”标签位置
+text(4, length(data$Author) + 2, "Hedges's Effect Size and 95% CI", pos = 2, cex = 0.75)
+
+# 添加“Author(s)/Year”标签
+text(-3.2, length(data$Author) + 2, "Author(s)/Year", pos = 4, cex = 0.75)
