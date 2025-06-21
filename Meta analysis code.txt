@@ -1,0 +1,68 @@
+# 安装并加载必要的包
+if (!requireNamespace("readxl", quietly = TRUE)) install.packages("readxl")
+if (!requireNamespace("metafor", quietly = TRUE)) install.packages("metafor")
+library(readxl)
+library(metafor)
+
+# 读取Excel数据
+data <- read.csv("D:/R/data/MC2506/Data summary2506.csv", encoding = "UTF-8", fileEncoding = "UTF-8-BOM")
+
+# 检查列名
+print(colnames(data))
+
+# 确保列名正确并转换数据类型
+# 请根据实际的列名替换 'Hedgesg.Effect.Size' 和 'Hedgesg.Standard.Error'
+data$Hedgesg_Effect_Size <- as.numeric(as.character(data$Hedges..g.Effect.Size))
+data$Hedgesg_Standard_Error <- as.numeric(as.character(data$Hedges..g.Standard.Error))
+
+# 检查数据
+str(data)
+
+# 创建固定效应模型
+rma_model <- try(rma(yi = data$Hedgesg_Effect_Size, 
+                     sei = data$Hedgesg_Standard_Error, 
+                     data = data, 
+                     method = "FE"), silent = TRUE)
+
+# 检查模型是否成功拟合
+if (inherits(rma_model, "try-error")) {
+  stop("Fixed effects model did not fit properly.")
+}
+
+# 执行Egger检验
+egger_test <- regtest(rma_model, model = "rma")
+
+# 查看Egger检验的结果
+print(egger_test)
+
+# 执行Trim-and-Fill方法
+taf_result <- trimfill(rma_model)
+
+# 查看Trim-and-Fill分析的结果
+print(taf_result)
+
+# 绘制Trim-and-Fill调整后的森林图
+forest(taf_result, main="Trim-and-Fill Adjusted Forest Plot")
+
+# 计算失安全系数
+# 使用已创建的rma模型对象
+fsn_result <- fsn(rma_model, type = "Rosenthal")
+
+# 查看失安全系数结果
+print(fsn_result)
+
+
+#绘制漏斗图
+# 增强版漏斗图：含参考线和置信区域
+funnel(rma_model,
+       main = "Funnel Plot of Included Studies",
+       xlab = "Effect Size (Hedges' g)",
+       ylab = "Standard Error",
+       level = 0.95,             # 显示95%置信区域
+       shade = c("white", "gray90", "gray80"),
+       refline = rma_model$b,    # 以合并效应量为参考线
+       lty = "dashed",           # 虚线样式
+       pch = 21, 
+       bg = "lightblue",
+       cex = 1.3)
+
